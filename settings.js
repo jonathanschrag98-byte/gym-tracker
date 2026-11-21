@@ -60,5 +60,8 @@ document.addEventListener("change", e => {
 });
 
 if ("serviceWorker" in navigator && location.protocol !== "file:"){
-  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+  // Neue Version: einmal neu laden, damit das Update sofort sichtbar ist (nicht während eines laufenden Trainings)
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (hadController && !S.draft) location.reload(); });
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js", { updateViaCache:"none" }).catch(() => {}));
 }

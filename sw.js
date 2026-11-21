@@ -1,8 +1,8 @@
-const CACHE = "gym-v2";
+const CACHE = "gym-v3";
 const FILES = ["./", "index.html", "platform.js", "settings.js", "meals.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 
 self.addEventListener("install", e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES.map(f => new Request(f, { cache:"reload" })))).then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
@@ -12,7 +12,7 @@ self.addEventListener("fetch", e => {
   const req = e.request;
   if (req.method !== "GET" || req.url.includes("api.anthropic.com")) return;
   e.respondWith(
-    fetch(req).then(res => {
+    (new URL(req.url).origin === location.origin ? fetch(req.url, { cache:"no-cache" }) : fetch(req)).then(res => {
       if (res.ok && (new URL(req.url).origin === location.origin || req.url.includes("fonts.g"))){
         const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy));
       }
