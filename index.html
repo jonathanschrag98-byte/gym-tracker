@@ -295,7 +295,7 @@ function viewStart(){
   const day = S.day || nextDay(), plan = planFor(day);
   const ups = plan.filter(suggestUp);
   return `
-  ${S.justFinished && S.sample ? `<div class="card" style="border-color:rgba(198,244,50,.4)"><h2>💪 Training gespeichert!</h2><p class="hint">Was solltest du jetzt essen?</p><button class="btn primary" data-act="coach" data-k="post">Essensvorschlag nach dem Training</button></div>` : ""}
+  ${S.justFinished ?`<div class="card" style="border-color:rgba(198,244,50,.4)"><h2>💪 Training gespeichert!</h2><p class="hint">Was solltest du jetzt essen?</p><button class="btn primary" data-act="coach" data-k="post">Essensvorschlag nach dem Training</button></div>` : ""}
   <div class="card">
     <span class="tag">Ganzkörper · Tag A/B im Wechsel</span>
     <h2>Bereit fürs Training?</h2>
@@ -438,21 +438,23 @@ function md(t){
 }
 function viewFood(){
   const p = nprof(), last = S.docs.find(x=>x._id==="lasttip");
-  const text = S.coachText || (last && last.text) || "";
-  if (!S.sample) return `<div class="card"><h2>Ernährungs-Coach</h2><p class="hint">Der Coach braucht einen Claude-API-Schlüssel. Hinterlege ihn in den Einstellungen.</p><button class="btn ghost" data-tab="settings">⚙️ Zu den Einstellungen</button></div>`;
+  const lastToday = last && last.ts && new Date(last.ts).toDateString()===new Date().toDateString() && !S.offKind ? last.text : "";
+  const ai = S.coachBusy || S.coachText || lastToday;
+  const text = S.coachText || lastToday || offlineCoach(S.offKind || "today");
   return `
   <div class="card">
     <h2>Ernährungs-Coach</h2>
     <p class="hint" style="margin:4px 0 10px">Kennt dein Gewicht, dein Training und deine Läufe.</p>
     <button class="btn primary" data-act="coach" data-k="today" ${S.coachBusy?"disabled":""}>🍽️ Was soll ich heute essen?</button>
     <button class="btn ghost" data-act="coach" data-k="post" ${S.coachBusy?"disabled":""}>💪 Essen nach dem Training</button>
-    ${S.canImg ? `<button class="btn ghost" data-act="fimg" ${S.coachBusy?"disabled":""}>📷 Foto von Kühlschrank oder Teller</button><input type="file" id="ffile" accept="image/png,image/jpeg,image/webp,image/heic" hidden>` : ""}
+    ${S.sample ? `${S.canImg ? `<button class="btn ghost" data-act="fimg" ${S.coachBusy?"disabled":""}>📷 Foto von Kühlschrank oder Teller</button><input type="file" id="ffile" accept="image/png,image/jpeg,image/webp,image/heic" hidden>` : ""}
     <label class="lbl" style="margin-top:12px">Eigene Frage<textarea id="fq" rows="2" placeholder="z. B. Snack vor einer langen Radtour?">${esc(S.coachQ)}</textarea></label>
-    <button class="btn ghost" data-act="coach" data-k="ask" style="margin-top:8px" ${S.coachBusy?"disabled":""}>Fragen</button>
+    <button class="btn ghost" data-act="coach" data-k="ask" style="margin-top:8px" ${S.coachBusy?"disabled":""}>Fragen</button>`
+    : `<p class="hint" style="margin:10px 0 0;font-size:12px">Eigene Fragen und Foto-Analyse: Claude-Schlüssel unter <a href="#" data-tab="settings" style="color:var(--accent)">⚙️ Einstellungen</a> hinterlegen.</p>`}
   </div>
-  ${(S.coachBusy || text || S.coachErr) ? `<div class="card"><div class="ans" id="ans">${S.coachBusy && !S.coachText ? `<p class="hint">⏳ Denkt nach …</p>` : md(text)}</div>
+  <div class="card">${ai ? "" : `<span class="tag">Deine Empfehlung · ${new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})} Uhr</span>`}<div class="ans" id="ans">${S.coachBusy && !S.coachText ? `<p class="hint">⏳ Denkt nach …</p>` : md(text)}</div>
     ${S.coachErr?`<p class="hint" style="color:var(--warn)">${esc(S.coachErr)}</p>`:""}
-    ${S.coachBusy?`<button class="btn ghost" data-act="cstop" style="margin-top:8px">Stopp</button>`:(text?`<p class="hint" style="margin:10px 0 0;font-size:12px">Allgemeine Tipps, keine medizinische Beratung. Mengen und Nährwerte sind Schätzungen.</p>`:"")}</div>` : ""}
+    ${S.coachBusy?`<button class="btn ghost" data-act="cstop" style="margin-top:8px">Stopp</button>`:`${ai ? "" : `<button class="btn ghost" data-act="reroll" style="margin-top:10px">🔄 Andere Gerichte</button>`}<p class="hint" style="margin:10px 0 0;font-size:12px">Allgemeine Tipps, keine medizinische Beratung. Mengen und Nährwerte sind Schätzungen.</p>`}</div>
   <div class="card">
     <div class="exhead" style="margin:0"><h2 style="margin:0">Dein Profil</h2><button class="x" data-act="prof">${S.profOpen?"▴":"▾"}</button></div>
     ${S.profOpen ? `
@@ -496,7 +498,14 @@ Feste Regeln:
 - Format fürs Handy: höchstens ca. 180 Wörter, kurze Überschriften mit ###, Stichpunkte mit "- ", konkrete Gerichte mit ungefähren Mengen und Eiweiß. Keine Einleitung, keine Tabellen.`;
 let coachCtl = null;
 async function runCoach(kind, image){
-  if (!S.sample || S.coachBusy) return;
+  if (S.coachBusy) return;
+  if (!S.sample){
+    S.mealPrev = S.offKind===kind ? new Set(S.mealShown||[]) : null; S.mealSeed = (S.mealSeed||0) + (S.offKind===kind ? 1 : 0);
+    S.coachText = ""; S.coachErr = ""; S.offKind = kind; S.tab = "food";
+    if (kind==="post") S.justFinished = false;
+    render(); window.scrollTo(0,0); return;
+  }
+  S.offKind = null;
   const q = (S.coachQ||"").trim();
   if (kind==="ask" && !q){ const el=$("#fq"); if(el) el.focus(); return; }
   const task = {
@@ -727,12 +736,13 @@ document.addEventListener("click", e => {
   }
   if (a==="coach") runCoach(t.dataset.k);
   if (a==="cstop" && coachCtl) coachCtl.abort();
+  if (a==="reroll"){ S.mealPrev = new Set(S.mealShown||[]); S.mealSeed = (S.mealSeed||0) + 1; render(); }
   if (a==="fimg"){ const f = $("#ffile"); if (f) f.click(); }
   if (a==="prof"){ S.profOpen = !S.profOpen; render(); }
   if (a==="psave"){
     const d = {type:"nutrition", goal: $("#pgoal").value.trim()||DEFAULT_GOAL, likes: $("#plikes").value.trim(), avoid: $("#pavoid").value.trim(), effort: $("#peffort").value};
     if (col) queueWrite(()=>col.doc("nutrition").set(d));
-    S.docs = S.docs.filter(x=>x._id!=="nutrition").concat({_id:"nutrition", ...d}); S.profOpen = false; render();
+    S.docs = S.docs.filter(x=>x._id!=="nutrition").concat({_id:"nutrition", ...d}); S.profOpen = false; S.coachText = ""; render();
   }
   if (a==="rimg"){ const f = $("#rfile"); if (f) f.click(); }
   if (a==="rdel"){ const id=t.dataset.id; ask("Lauf löschen?", ()=>{ if(col) queueWrite(()=>col.doc(id).delete()); S.docs=S.docs.filter(d=>d._id!==id); render(); }); }
@@ -785,6 +795,7 @@ function discard(){ clearTimeout(draftTimer); S.draft=null; S.timer=null; tick()
 
 init();
 </script>
+<script src="meals.js"></script>
 <script src="settings.js"></script>
 </body>
 </html>

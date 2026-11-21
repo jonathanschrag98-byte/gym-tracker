@@ -14,4 +14,4 @@ Fürs Handy muss die App über HTTPS erreichbar sein (z. B. GitHub Pages). Danac
 - Android (Chrome): Menü → „App installieren“
 
 Daten liegen nur auf dem Handy → regelmäßig unter ⚙️ ein Backup speichern.
-Nach Änderungen an den Dateien in `sw.js` die Versionsnummer (`gym-v1`) erhöhen.
+Nach Änderungen an den Dateien in `sw.js` die Versionsnummer (`gym-vN`) erhöhen.

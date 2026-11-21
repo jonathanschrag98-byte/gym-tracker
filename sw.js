@@ -1,5 +1,5 @@
-const CACHE = "gym-v1";
-const FILES = ["./", "index.html", "platform.js", "settings.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
+const CACHE = "gym-v2";
+const FILES = ["./", "index.html", "platform.js", "settings.js", "meals.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
