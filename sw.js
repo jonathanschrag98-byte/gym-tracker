@@ -1,5 +1,5 @@
-const CACHE = "gym-v3";
-const FILES = ["./", "index.html", "platform.js", "settings.js", "meals.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
+const CACHE = "gym-v4";
+const FILES = ["./", "index.html", "platform.js", "settings.js", "meals.js", "plan.js", "finder.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES.map(f => new Request(f, { cache:"reload" })))).then(() => self.skipWaiting()));

@@ -1,62 +1,100 @@
-/* Eingebauter Ernährungs-Coach: empfiehlt passende Gerichte ohne Internet und ohne API-Schlüssel.
-   Berücksichtigt Uhrzeit, Training/Lauf heute, Körpergewicht, Vorlieben, Unverträglichkeiten und Kochaufwand.
-   m = Mahlzeiten (f Frühstück, m Mittag, a Abend, s Snack, p nach dem Training, n spät abends)
-   t = Aufwand (s schnell ≤15 min, n normal, a aufwendig) */
+/* Rezeptsammlung und eingebauter Ernährungs-Coach (ohne Internet, ohne API-Schlüssel).
+   Pro Portion: p Eiweiß, c Kohlenhydrate, f Fett in g (Schätzwerte); Kalorien = 4p + 4c + 9f.
+   m = Mahlzeiten (f Frühstück, m Mittag, a Abend, s Snack, p nach dem Training, n spät abends), z = Kochzeit in min
+   g = Allergene/Herkunft: milch ei gluten soja nuesse pilze honig fisch fleisch (sorgfältig pflegen, danach wird gefiltert) */
 const MEALS = [
-  {n:"Skyr-Bowl mit Beeren", m:"fsp", t:"s", k:420, p:35, d:"250 g Skyr, 40 g Haferflocken, 100 g Beeren, 1 TL Honig", g:"milch gluten"},
-  {n:"Rührei auf Vollkornbrot", m:"fa", t:"s", k:480, p:28, d:"3 Eier, 2 Scheiben Vollkornbrot, 1 Tomate, Schnittlauch", g:"ei gluten"},
-  {n:"Overnight Oats mit Quark", m:"fp", t:"s", k:520, p:38, d:"60 g Haferflocken, 200 g Magerquark, 150 ml Milch, 1 Banane, Zimt", g:"milch gluten"},
-  {n:"Vollkornbrot mit Hüttenkäse und Räucherlachs", m:"fs", t:"s", k:450, p:36, d:"2 Scheiben Vollkornbrot, 150 g Hüttenkäse, 50 g Räucherlachs, Gurke", g:"milch fisch gluten"},
-  {n:"Tofu-Rührei mit Spinat", m:"fa", t:"s", k:380, p:28, d:"200 g Naturtofu, 1 Handvoll Spinat, 1 Scheibe Vollkornbrot, Kurkuma", g:"soja gluten"},
-  {n:"Protein-Pancakes", m:"fp", t:"n", k:500, p:37, d:"2 Eier, 50 g Haferflocken, 150 g Magerquark, 1 Banane, Beeren obendrauf", g:"ei milch gluten"},
-  {n:"Hähnchen-Reis-Bowl", m:"map", t:"n", k:600, p:48, d:"150 g Hähnchenbrust, 80 g Reis (roh), Brokkoli, Paprika, Sojasauce", g:"fleisch soja"},
-  {n:"Vollkornpasta mit Thunfisch-Tomatensauce", m:"map", t:"s", k:650, p:48, d:"100 g Vollkornpasta, 1 Dose Thunfisch (natur), 250 g passierte Tomaten, Zwiebel, Oregano", g:"fisch gluten"},
-  {n:"Linsen-Bolognese", m:"ma", t:"n", k:680, p:36, d:"100 g Vollkornspaghetti, 70 g rote Linsen, Tomaten, Möhre, Zwiebel, 20 g Parmesan", g:"gluten milch"},
-  {n:"Ofenlachs mit Kartoffeln und Zucchini", m:"ma", t:"n", k:650, p:38, d:"150 g Lachsfilet, 300 g Kartoffeln, 1 Zucchini, Zitrone, 1 TL Olivenöl", g:"fisch"},
-  {n:"Chili con Carne", m:"ma", t:"a", k:680, p:45, d:"125 g mageres Rinderhack, ½ Dose Kidneybohnen, Mais, Tomaten, 60 g Reis (roh)", g:"fleisch"},
-  {n:"Putengeschnetzeltes mit Bulgur", m:"ma", t:"n", k:560, p:47, d:"150 g Putenbrust, 70 g Bulgur, Champignons, Paprika, 50 ml Kochsahne light", g:"fleisch gluten pilze milch"},
-  {n:"Kichererbsen-Spinat-Curry", m:"ma", t:"n", k:620, p:24, d:"240 g Kichererbsen (Dose), 1 Handvoll Spinat, 100 ml leichte Kokosmilch, Currypaste, 60 g Reis (roh)", g:""},
-  {n:"Hähnchen-Wraps", m:"map", t:"s", k:550, p:42, d:"2 Vollkornwraps, 120 g Hähnchenbrust, Salat, Tomate, 2 EL Joghurt-Dip", g:"fleisch gluten milch"},
-  {n:"Ofenkartoffel mit Kräuterquark und Ei", m:"ma", t:"n", k:560, p:42, d:"400 g Kartoffeln, 200 g Magerquark mit Kräutern, 2 Eier, Gurkensalat", g:"milch ei"},
-  {n:"Tofu mit Reisnudeln und Gemüse", m:"ma", t:"n", k:620, p:30, d:"200 g Tofu, 80 g Reisnudeln, Pak Choi oder Brokkoli, 1 EL Erdnussmus, Sojasauce", g:"soja nuesse"},
-  {n:"Shakshuka mit Feta", m:"fma", t:"s", k:520, p:32, d:"3 Eier, 400 g stückige Tomaten, 1 Paprika, 40 g Feta, 1 Scheibe Vollkornbrot", g:"ei milch gluten"},
-  {n:"Griechischer Salat mit Hähnchen", m:"ma", t:"s", k:520, p:45, d:"130 g Hähnchenbrust, Gurke, Tomate, ½ Dose Kichererbsen, 30 g Feta, Oliven", g:"fleisch milch"},
-  {n:"Lachs-Bowl mit Edamame", m:"ma", t:"n", k:620, p:38, d:"120 g Lachs, 70 g Reis (roh), 80 g Edamame, Gurke, Möhre, Sojasauce", g:"fisch soja"},
-  {n:"Vollkorn-Pizza mit Hähnchen", m:"a", t:"a", k:700, p:45, d:"Teig aus 100 g Vollkornmehl, Tomatensauce, 100 g Hähnchen, 50 g Mozzarella light, Gemüse", g:"fleisch gluten milch"},
-  {n:"Rinderhack-Gemüsepfanne mit Kartoffeln", m:"ma", t:"n", k:610, p:40, d:"125 g mageres Rinderhack, 300 g Kartoffeln, Paprika, Zucchini, Zwiebel", g:"fleisch"},
-  {n:"Bohnen-Quinoa-Salat", m:"ma", t:"s", k:540, p:26, d:"70 g Quinoa, ½ Dose schwarze Bohnen, Mais, Paprika, Limette, Koriander", g:""},
-  {n:"Magerquark mit Beeren", m:"spn", t:"s", k:200, p:30, d:"250 g Magerquark, 100 g Beeren, etwas Süßstoff oder Honig", g:"milch"},
-  {n:"Reiswaffeln mit Hüttenkäse", m:"s", t:"s", k:200, p:18, d:"3 Reiswaffeln, 150 g Hüttenkäse, Tomate", g:"milch"},
-  {n:"Apfel und Nüsse", m:"s", t:"s", k:260, p:7, d:"1 Apfel, 30 g Mandeln oder Walnüsse", g:"nuesse"},
-  {n:"Shake mit Milch und Banane", m:"sp", t:"s", k:330, p:32, d:"300 ml Milch, 1 Banane, optional 1 Messlöffel Proteinpulver (oder 150 g Skyr)", g:"milch"},
-  {n:"Edamame mit Meersalz", m:"sn", t:"s", k:240, p:22, d:"200 g Edamame (TK, 5 min gekocht)", g:"soja"},
-  {n:"Gekochte Eier mit Gemüsesticks", m:"s", t:"s", k:180, p:13, d:"2 Eier, Möhren, Gurke, Paprika", g:"ei"},
-  {n:"Hüttenkäse mit Gurke", m:"n", t:"s", k:160, p:20, d:"200 g Hüttenkäse, Gurke, Pfeffer", g:"milch"},
-  {n:"Banane und Joghurt", m:"p", t:"s", k:250, p:12, d:"1 Banane, 200 g Naturjoghurt, 1 TL Honig", g:"milch"},
+  ["Skyr-Bowl mit Beeren","fsp",5,36,55,5,"250 g Skyr, 40 g Haferflocken, 100 g Beeren, 1 TL Honig","milch gluten honig"],
+  ["Rührei auf Vollkornbrot","fa",10,29,38,24,"3 Eier, 2 Scheiben Vollkornbrot, 1 Tomate, Schnittlauch","ei gluten"],
+  ["Overnight Oats mit Quark","fp",5,40,75,8,"60 g Haferflocken, 200 g Magerquark, 150 ml Milch, 1 Banane, Zimt","milch gluten"],
+  ["Vollkornbrot mit Hüttenkäse und Räucherlachs","fs",5,36,40,14,"2 Scheiben Vollkornbrot, 150 g Hüttenkäse, 50 g Räucherlachs, Gurke","milch fisch gluten"],
+  ["Tofu-Rührei mit Spinat","fa",15,30,22,20,"200 g Naturtofu, 1 Handvoll Spinat, 1 Scheibe Vollkornbrot, Kurkuma","soja gluten"],
+  ["Protein-Pancakes","fp",20,38,58,15,"2 Eier, 50 g Haferflocken, 150 g Magerquark, 1 Banane, Beeren","ei milch gluten"],
+  ["Haferbrei mit Apfel und Zimt","fp",10,14,70,9,"70 g Haferflocken, 250 ml Haferdrink, 1 Apfel, Zimt","gluten"],
+  ["Omelett mit Feta und Spinat","fma",15,32,5,30,"3 Eier, 50 g Feta, 1 Handvoll Spinat, 1 TL Öl","ei milch"],
+  ["Avocadobrot mit Ei","fa",10,20,32,28,"2 Scheiben Vollkornbrot, ½ Avocado, 2 Eier","ei gluten"],
+  ["Magerquark mit Leinöl und Nüssen","fs",5,34,14,22,"250 g Magerquark, 1 EL Leinöl, 15 g Walnüsse, Beeren","milch nuesse"],
+  ["Chia-Pudding mit Sojadrink","fs",5,15,22,18,"40 g Chiasamen, 250 ml Sojadrink, 100 g Beeren (über Nacht quellen)","soja"],
+  ["Brötchen mit Putenbrust","fsp",5,26,50,6,"2 Brötchen, 80 g Putenbrust-Aufschnitt, Gurke, Tomate","fleisch gluten"],
+  ["Hähnchen-Reis-Bowl","map",25,48,75,9,"150 g Hähnchenbrust, 80 g Reis (roh), Brokkoli, Paprika, Sojasauce","fleisch soja gluten"],
+  ["Vollkornpasta mit Thunfisch-Tomatensauce","map",15,48,82,9,"100 g Vollkornpasta, 1 Dose Thunfisch (natur), 250 g passierte Tomaten, Zwiebel","fisch gluten"],
+  ["Linsen-Bolognese","ma",30,36,105,10,"100 g Vollkornspaghetti, 70 g rote Linsen, Tomaten, Möhre, Zwiebel, 20 g Parmesan","gluten milch hartkaese"],
+  ["Ofenlachs mit Kartoffeln und Zucchini","ma",35,38,55,28,"150 g Lachsfilet, 300 g Kartoffeln, 1 Zucchini, Zitrone, 1 TL Olivenöl","fisch"],
+  ["Chili con Carne","ma",45,45,85,14,"125 g mageres Rinderhack, ½ Dose Kidneybohnen, Mais, Tomaten, 60 g Reis (roh)","fleisch rind"],
+  ["Putengeschnetzeltes mit Bulgur","ma",25,47,58,12,"150 g Putenbrust, 70 g Bulgur, Champignons, Paprika, 50 ml Kochsahne","fleisch gluten pilze milch"],
+  ["Kichererbsen-Spinat-Curry","ma",25,23,95,16,"240 g Kichererbsen (Dose), Spinat, 100 ml leichte Kokosmilch, Currypulver, 60 g Reis (roh)",""],
+  ["Hähnchen-Wraps","map",15,42,55,15,"2 Vollkornwraps, 120 g Hähnchenbrust, Salat, Tomate, 2 EL Joghurt-Dip","fleisch gluten milch"],
+  ["Ofenkartoffel mit Kräuterquark und Ei","ma",45,42,72,12,"400 g Kartoffeln, 200 g Magerquark mit Kräutern, 2 Eier, Gurkensalat","milch ei"],
+  ["Tofu mit Reisnudeln und Gemüse","ma",20,32,75,23,"200 g Tofu, 80 g Reisnudeln, Brokkoli, 1 EL Erdnussmus, Sojasauce","soja nuesse gluten"],
+  ["Shakshuka mit Feta","fma",25,32,32,29,"3 Eier, 400 g stückige Tomaten, 1 Paprika, 40 g Feta, 1 Scheibe Vollkornbrot","ei milch gluten"],
+  ["Griechischer Salat mit Hähnchen","ma",15,46,25,22,"130 g Hähnchenbrust, Gurke, Tomate, ½ Dose Kichererbsen, 30 g Feta, Oliven","fleisch milch"],
+  ["Lachs-Bowl mit Edamame","ma",25,38,66,24,"120 g Lachs, 70 g Reis (roh), 80 g Edamame, Gurke, Möhre, Sojasauce","fisch soja gluten"],
+  ["Vollkorn-Pizza mit Hähnchen","a",60,50,82,18,"Teig aus 100 g Vollkornmehl, Tomatensauce, 100 g Hähnchen, 50 g Mozzarella light, Gemüse","fleisch gluten milch"],
+  ["Rinderhack-Gemüsepfanne mit Kartoffeln","ma",30,38,58,18,"125 g mageres Rinderhack, 300 g Kartoffeln, Paprika, Zucchini, Zwiebel","fleisch rind"],
+  ["Bohnen-Quinoa-Salat","ma",20,24,82,11,"70 g Quinoa, ½ Dose schwarze Bohnen, Mais, Paprika, Limette, 1 TL Öl",""],
+  ["Zucchininudeln mit Garnelen","ma",20,35,14,12,"200 g Garnelen, 2 Zucchini, Kirschtomaten, Knoblauch, 2 TL Olivenöl","fisch krebstiere"],
+  ["Hähnchenbrust mit großem Salat","ma",20,50,12,14,"200 g Hähnchenbrust, Blattsalat, Gurke, Paprika, 1 EL Olivenöl","fleisch"],
+  ["Kabeljau mit Ofengemüse","ma",35,42,28,12,"220 g Kabeljau, Zucchini, Paprika, Möhren, 1 EL Olivenöl","fisch"],
+  ["Rindersteak mit Bohnen","a",20,50,12,26,"200 g Rinderhüftsteak, 250 g grüne Bohnen, 1 EL Olivenöl","fleisch rind"],
+  ["Lachs mit Spargel oder Brokkoli","ma",20,42,10,36,"180 g Lachsfilet, 300 g Spargel oder Brokkoli, 1 TL Öl, Zitrone","fisch"],
+  ["Hähnchen-Avocado-Salat","ma",15,44,12,32,"150 g Hähnchenbrust, 1 Avocado, Blattsalat, Tomaten, Zitrone","fleisch"],
+  ["Halloumi mit Ofengemüse","ma",30,28,24,38,"120 g Halloumi, Zucchini, Paprika, Aubergine, 1 TL Öl","milch"],
+  ["Spaghetti aglio e olio","ma",15,15,82,24,"110 g Spaghetti, 2 EL Olivenöl, Knoblauch, Chili, Petersilie","gluten"],
+  ["Gemüse-Couscous","ma",15,15,80,9,"90 g Couscous, Zucchini, Paprika, Tomate, 2 TL Olivenöl","gluten"],
+  ["Tomaten-Reis mit Gemüse","map",25,12,98,7,"110 g Reis (roh), stückige Tomaten, Paprika, Erbsen, 1 TL Öl",""],
+  ["Kartoffelsuppe","ma",35,11,62,9,"350 g Kartoffeln, Möhren, Lauch, 2 TL Öl, Gemüsebrühe",""],
+  ["Kürbissuppe mit Kokosmilch","ma",30,7,38,18,"400 g Hokkaido, 100 ml Kokosmilch, Zwiebel, Ingwer",""],
+  ["Minestrone mit weißen Bohnen","ma",30,19,55,7,"½ Dose weiße Bohnen, Möhren, Zucchini, Tomaten, 40 g Nudeln","gluten"],
+  ["Gemüsebrühe mit Hähnchen und Reis","map",25,32,42,5,"120 g Hähnchenbrust, 45 g Reis (roh), Möhren, Lauch","fleisch"],
+  ["Rote-Linsen-Suppe","ma",25,25,60,6,"90 g rote Linsen, Möhren, Tomaten, Kreuzkümmel, 1 TL Öl",""],
+  ["Tofu-Gemüsepfanne ohne Reis","ma",20,34,18,24,"250 g Tofu, Brokkoli, Paprika, Möhre, 1 TL Öl, Ingwer, Salz","soja"],
+  ["Tempeh-Reis-Bowl","ma",25,38,72,20,"170 g Tempeh, 70 g Reis (roh), Gemüse, Limette","soja"],
+  ["Seitan-Pfanne mit Paprika","ma",20,48,28,8,"180 g Seitan, Paprika, Zwiebel, Tomaten, 1 TL Öl","gluten soja"],
+  ["Süßkartoffel mit schwarzen Bohnen","ma",45,18,92,8,"350 g Süßkartoffel, ½ Dose schwarze Bohnen, Mais, Salsa",""],
+  ["Gnocchi mit Tomatensauce und Mozzarella","ma",15,24,90,16,"250 g Gnocchi, passierte Tomaten, 60 g Mozzarella, Basilikum","gluten milch ei"],
+  ["Käsespätzle mit Salat","a",30,34,75,34,"200 g Spätzle, 70 g Bergkäse, Zwiebeln, Blattsalat","gluten milch ei hartkaese"],
+  ["Pilzrisotto","a",40,17,88,15,"100 g Risottoreis, 200 g Champignons, Zwiebel, 20 g Parmesan, 1 TL Öl","milch pilze hartkaese"],
+  ["Lasagne mit Rinderhack","a",75,42,62,30,"120 g Rinderhack, 80 g Lasagneplatten, Tomaten, Bechamel, 40 g Käse","fleisch rind gluten milch ei"],
+  ["Gefüllte Paprika mit Hack","a",55,38,50,20,"2 Paprika, 120 g mageres Rinderhack, 50 g Reis (roh), Tomatensauce","fleisch rind"],
+  ["Magerquark mit Beeren","spn",5,31,20,1,"250 g Magerquark, 100 g Beeren","milch"],
+  ["Reiswaffeln mit Hüttenkäse","s",5,20,24,6,"3 Reiswaffeln, 150 g Hüttenkäse, Tomate","milch"],
+  ["Apfel und Nüsse","s",5,7,25,17,"1 Apfel, 30 g Mandeln oder Walnüsse","nuesse"],
+  ["Shake mit Milch und Banane","sp",5,27,45,5,"300 ml Milch, 1 Banane, 150 g Skyr","milch"],
+  ["Edamame mit Meersalz","sn",5,22,16,10,"200 g Edamame (TK, 5 min gekocht)","soja"],
+  ["Gekochte Eier mit Gemüsesticks","s",10,14,8,11,"2 Eier, Möhren, Gurke, Paprika","ei"],
+  ["Hüttenkäse mit Gurke","sn",5,25,7,8,"200 g Hüttenkäse, Gurke, Pfeffer","milch"],
+  ["Banane und Joghurt","sp",5,11,42,7,"1 Banane, 200 g Naturjoghurt, 1 TL Honig","milch honig"],
+  ["Hummus mit Gemüsesticks","s",10,10,22,14,"80 g Hummus, Möhren, Paprika, Gurke","sesam"],
+  ["Reiswaffeln mit Banane","sp",5,4,48,1,"3 Reiswaffeln, 1 Banane",""],
+  ["Obstsalat","s",10,3,45,1,"1 Apfel, 1 Orange, 100 g Trauben",""],
+  ["Putenröllchen mit Frischkäse","sn",5,24,4,7,"100 g Putenbrust-Aufschnitt, 40 g leichter Frischkäse, Gurke","fleisch milch"],
+  ["Thunfisch-Gurken-Salat","sn",5,30,6,5,"1 Dose Thunfisch (natur), Gurke, 1 TL Öl, Zitrone","fisch"],
+  ["Kernige Nussmischung","s",1,9,9,27,"45 g gemischte Nüsse","nuesse"],
+].map(([n, m, z, p, c, f, d, g]) => ({n, m, z, p, c, f, d, g, k:Math.round((4*p + 4*c + 9*f) / 10) * 10, t:z <= 15 ? "s" : z <= 35 ? "n" : "a"}));
+
+// Was im Profil steht → wonach gefiltert wird. Lieber einmal zu viel aussortieren als zu wenig.
+const AVOID_ROOTS = [
+  [/^kokos/, null],
+  [/lakto|milch|molke|casein|kasein|käse$/, ["milch"]],
+  [/vegan/, ["fleisch","fisch","milch","ei","honig"]], [/vegetar|veggie/, ["fleisch","fisch","hartkaese"]],
+  [/meeresfr|krebs|krusten|garnel|shrimp/, ["krebstiere"]], [/fisch/, ["fisch"]],
+  [/^rind/, ["rind"]], [/^schwein/, ["schwein"]], [/fleisch/, ["fleisch"]],
+  [/gluten|weizen|zöliak|getreide/, ["gluten"]], [/^(hühner)?ei(er|ern)?$/, ["ei"]], [/eierallerg|eiallerg|hühnereiweiß/, ["ei"]],
+  [/nuss|nüsse|nuesse|mandel/, ["nuesse"]], [/pilz|champignon/, ["pilze"]], [/soja|tofu/, ["soja"]], [/sesam/, ["sesam"]], [/honig/, ["honig"]],
 ];
-const AVOID_SYN = {
-  laktose:["milch"], milchprodukte:["milch"], milch:["milch"], käse:["milch"],
-  fisch:["fisch"], meeresfrüchte:["fisch"], lachs:["fisch"], thunfisch:["fisch"],
-  fleisch:["fleisch"], vegetarisch:["fleisch","fisch"], vegetarier:["fleisch","fisch"],
-  vegan:["fleisch","fisch","milch","ei","honig"], veganer:["fleisch","fisch","milch","ei","honig"],
-  gluten:["gluten"], weizen:["gluten"], ei:["ei"], eier:["ei"],
-  nüsse:["nuesse"], nuss:["nuesse"], nuesse:["nuesse"], erdnüsse:["nuesse"], erdnuss:["nuesse"], mandeln:["nuesse"],
-  pilze:["pilze"], champignons:["pilze"], soja:["soja"], tofu:["soja"],
-};
-function mealTerms(txt){ return String(txt||"").toLowerCase().split(/[,;\/\n]|\bund\b|\boder\b/).map(s=>s.replace(/^(kein|keine|keinen|nicht|kein\.)\s+/,"").trim()).filter(s=>s.length>=2); }
-function mealTokens(r){
-  const words = (r.n+" "+r.d).toLowerCase().split(/[^a-zäöüß]+/).filter(Boolean);
-  const tags = new Set(r.g.split(" ").filter(Boolean));
-  if (r.d.toLowerCase().includes("honig")) tags.add("honig");
-  return {words, tags};
-}
+const AVOID_STOP = new Set("kein keine keinen keiner nicht nichts ich mag esse vertrage bin habe und oder auch sehr gar ungern wenig ohne frei der die das den dem mit auf gegen von allergie allergisch allergiker unverträglich unverträglichkeit intoleranz bitte alles alle zu in es ist am im gern gerne z b".split(" "));
+function mealTerms(txt){ return [...new Set(String(txt || "").toLowerCase().split(/[^a-zäöüß]+/).filter(w => w.length >= 2 && !AVOID_STOP.has(w)))]; }
 function mealHits(r, term){
-  const {words, tags} = mealTokens(r);
-  const syn = AVOID_SYN[term];
-  if (syn) return syn.some(s => tags.has(s) || words.includes(s));
+  const root = AVOID_ROOTS.find(x => x[0].test(term));
+  const tags = r.g.split(" ");
+  if (root && root[1] && root[1].some(s => tags.includes(s))) return true;
+  if (root && root[1] && term.length < 5) return false;
+  const words = (r.n + " " + r.d).toLowerCase().split(/[^a-zäöüß]+/).filter(Boolean);
+  if (/^geflügel/.test(term)) return words.some(w => /hähnchen|pute/.test(w));
   if (term.length < 4) return words.includes(term);
-  return words.some(w => w.startsWith(term) || (term.length >= 5 && w.includes(term)));
+  const stem = term.length >= 5 ? term.replace(/(en|n|e|s)$/, "") : term;
+  return words.some(w => w.startsWith(stem) || (stem.length >= 4 && w.includes(stem)));
 }
+const mealUnknown = txt => mealTerms(txt).filter(t => !AVOID_ROOTS.some(x => x[0].test(t)) && !MEALS.some(r => mealHits(r, t)));
 function mealHash(s){ let h = 2166136261; for (const c of s){ h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; }
 
 function mealPick(slot, n, used, ctx){
@@ -118,6 +156,8 @@ function offlineCoach(kind){
     k += picks[0].k; p += picks[0].p;
   }
   out.push(`Mit der jeweils ersten Option kommst du für den Rest des Tages auf ca. ${Math.round(k / 10) * 10} kcal und ${p} g Eiweiß.`);
+  const unk = mealUnknown(prof.avoid);
+  if (unk.length) out.push(`Aus deinem Profil nicht zugeordnet: ${unk.join(", ")}. Zutaten bitte selbst prüfen.`);
   S.mealShown = [...used];
   if (kind === "ask") out.push("### Eigene Fragen\n- Freie Fragen und Foto-Analyse gehen mit einem Claude-Schlüssel unter ⚙️ Einstellungen.");
   return out.join("\n");

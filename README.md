@@ -5,6 +5,8 @@ Eigenständige Version des claude.ai-Artefakts „Gym Tracker“, installierbar 
 - `index.html` – die App (aus dem Artefakt übernommen)
 - `platform.js` – ersetzt den claude.ai-Speicher durch lokalen Speicher auf dem Gerät; Coach/Screenshot-Import über eigenen Claude-API-Schlüssel (optional)
 - `settings.js` – Einstellungen (⚙️): Backup speichern/laden, API-Schlüssel
+- `plan.js` – Trainingsplan und Übungs-Editor
+- `meals.js` – Rezepte und eingebauter Coach; `finder.js` – Essensideen-Finder
 - `sw.js`, `manifest.webmanifest`, Icons – Offline-Betrieb und Installation
 
 Lokal testen: `node .claude/serve.js` → http://localhost:8642
