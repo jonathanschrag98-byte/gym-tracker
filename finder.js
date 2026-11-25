@@ -1,14 +1,15 @@
 /* Essensideen-Finder: Filter → ein passender Vorschlag */
 const FF_CATS = [["","Alle"],["f","Frühstück"],["m","Mittagessen"],["a","Abendessen"],["s","Snack"],["p","Nach dem Training"]];
 const FF_DIET = [["","Alles"],["veg","Vegetarisch"],["vegan","Vegan"]];
-const FF_LVL = ["egal","sehr gering","gering","mittel","hoch","sehr hoch"];
+const FF_LVL = ["egal","gering","mittel","hoch"];
 // Stufen nach Anteil an den Kalorien der Mahlzeit (Grenzen in %)
-const FF_MAC = { p:{name:"Eiweiß", kc:4, lim:[10,18,26,36]}, c:{name:"Kohlenhydrate", kc:4, lim:[15,30,45,58]}, f:{name:"Fett", kc:9, lim:[12,22,34,48]} };
+const FF_MAC = { p:{name:"Eiweiß", kc:4, lim:[18,30]}, c:{name:"Kohlenhydrate", kc:4, lim:[25,48]}, f:{name:"Fett", kc:9, lim:[20,36]} };
 const FF_DEF = {cat:"", diet:"", kmin:100, kmax:900, p:0, c:0, f:0, z:60};
 const ffPct = (r, m) => Math.round(r[m] * FF_MAC[m].kc / (4*r.p + 4*r.c + 9*r.f) * 100);
 const ffLevel = (r, m) => 1 + FF_MAC[m].lim.filter(x => ffPct(r, m) >= x).length;
 function ffState(){
-  if (!S.ff){ const d = S.docs.find(x => x._id === "finder") || {}; S.ff = {}; for (const k in FF_DEF) S.ff[k] = typeof d[k] === typeof FF_DEF[k] ? d[k] : FF_DEF[k]; }
+  if (!S.ff){ const d = S.docs.find(x => x._id === "finder") || {}; S.ff = {}; for (const k in FF_DEF) S.ff[k] = typeof d[k] === typeof FF_DEF[k] ? d[k] : FF_DEF[k];
+    if (d.v !== 3) S.ff.p = S.ff.c = S.ff.f = 0; } // alte 5-Stufen-Werte nicht falsch deuten
   return S.ff;
 }
 function ffSearch(over){
@@ -54,7 +55,7 @@ function viewFinder(){
   return `<div class="card"><h2 style="margin-bottom:10px">Essensideen-Finder</h2>
     <div class="wbox" style="margin:0">${sel("cat", "Kategorie", FF_CATS)}${sel("diet", "Ernährungsart", FF_DIET)}</div>
     ${row("Kalorien", "k")}<div class="wbox" style="margin:0"><label class="hint">von${rng("kmin", 100, 850, 50, "Kalorien von")}</label><label class="hint">bis${rng("kmax", 150, 900, 50, "Kalorien bis")}</label></div>
-    ${["p","c","f"].map(m => row(FF_MAC[m].name, m) + rng(m, 0, 5, 1, FF_MAC[m].name)).join("")}
+    ${["p","c","f"].map(m => row(FF_MAC[m].name, m) + rng(m, 0, 3, 1, FF_MAC[m].name)).join("")}
     ${row("Kochzeit", "z")}${rng("z", 5, 60, 5, "Kochzeit")}
     <p class="hint" style="margin:8px 0 10px;font-size:12px">Regler ganz links = egal. Eiweiß, Kohlenhydrate und Fett zählen nach ihrem Anteil an den Kalorien. Unverträglichkeiten aus deinem Profil werden berücksichtigt.</p>
     <button class="btn ghost" data-act="ffreset">Filter zurücksetzen</button>
@@ -70,7 +71,7 @@ function ffSet(t, save){
   S.ffi = 0; $("#ffres").innerHTML = ffResult();
   if (save) ffSave();
 }
-function ffSave(){ const d = {type:"finder", ...S.ff}; if (col) queueWrite(() => col.doc("finder").set(d)); }
+function ffSave(){ const d = {type:"finder", v:3, ...S.ff}; if (col) queueWrite(() => col.doc("finder").set(d)); }
 document.addEventListener("input", e => { if (e.target.dataset.ff) ffSet(e.target, false); });
 document.addEventListener("change", e => { if (e.target.dataset.ff) ffSet(e.target, true); });
 document.addEventListener("click", e => {
