@@ -84,6 +84,11 @@
   .lbl{display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
   .lbl input{margin-top:4px}
   .wbox input{width:100%;background:var(--card2);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:12px;font-size:16px;font-family:inherit;outline:none;color-scheme:dark}
+  /* iOS: Datumsfelder haben sonst eine eigene Mindestbreite und -höhe und sprengen das Raster */
+  .wbox>*{min-width:0}
+  .wbox input:not([type=range]){min-width:0;max-width:100%;height:46px}
+  .wbox input[type=date]{-webkit-appearance:none;appearance:none;display:block;padding:0 10px;line-height:44px}
+  .wbox input[type=date]::-webkit-date-and-time-value{text-align:left;margin:0;min-height:0}
   details{border-top:1px solid var(--line);padding:10px 0}
   details:first-child{border-top:none}
   summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
